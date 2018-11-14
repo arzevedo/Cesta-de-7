@@ -1,0 +1,54 @@
+---
+title: "Análise de Jogadores"
+author: "Arthur Azevedo"
+date: "13 de novembro de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Análisando jogadores para assuntos no podcast e posts no blog.
+
+## Introdução
+
+O principal objtivo é extrair dados dos jogadores da **NBA**. A raspagem no site oficial da NBA é menos intuitiva, por isso vamos utilizar o site <https://www.basketball-reference.com/> usando o pacote `rvest`. O basketball reference facilita bastante o *scrap* dos dados, disponibilizando o *download* de aqruivos .csv e opções de customização das tabelas no próprio site. Vai rolar muito `%>%` e claro, muito `tidyverse`!  
+```{r Pacotes, message=FALSE}
+library(rvest)
+library(tidyverse)
+```
+Vamos agora separar o link. Queremos fazer algumas análises de estatísticas avançadas de todos os jogadores. Essas informações são diariamente atualizadas em <https://www.basketball-reference.com/leagues/NBA_2019_advanced.html>. Um pequeno tutorial de como pegar a tabela correta da página.     
+Como só existe uma tabela na página, o *scrap* demanda menos atenção.
+```{r im_1, echo=FALSE, fig.cap="Print da Página.", out.width = '70%',fig.align='center'}
+knitr::include_graphics("bsr_players_adv.png")
+```
+Para selecionar a tabela de interesse, selecionamos a opção de copiar o link direto da tabela: 
+```{r im_2, echo=FALSE, fig.cap="Print do direcionamento para a tabela correta.", out.width = '70%',fig.align='center'}
+knitr::include_graphics("bsr_players_adv_cop_link.png")
+```
+
+
+## Carregando e tratando dos dados
+
+```{r Carregando e limpando os dados}
+link <- read_html("https://www.basketball-reference.com/leagues/NBA_2019_advanced.html#advanced_stats::none") #Lendo o HTML direto da WEB
+
+players_adv <- as.data.frame( # Transformando em um data frame...
+  html_table( # ...Uma tabela...
+    html_nodes(x = link, css = "table") # ...Que possui o link "x" e o formato css "table"
+    )
+  )
+
+players_adv <- players_adv %>% # Pegando o dataframe
+  filter(!str_detect(Rk, "Rk")) %>% # Retirando as linhas que possuem a repetição do nome das colunas
+  select(-c(Var.25,Var.20)) %>% # Retirando as colunas "fantasmas", provinientes da formatação da página
+  mutate_at(vars(-Player, -Pos, -Tm), funs(as.numeric)) %>% # Transformando as variaveis que não são fatores ou caracteres em valores numericos
+  tbl_df() # Transformando tudo isso em tibble
+```
+
+Bom, vamos dar uma olhada no data set.
+```{r}
+players_adv %>% head
+```
+
