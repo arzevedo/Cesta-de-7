@@ -16,6 +16,8 @@ knitr::opts_chunk$set(echo = TRUE)
 O principal objtivo é extrair dados dos jogadores da **NBA**. A raspagem no site oficial da NBA é menos intuitiva, por isso vamos utilizar o site <https://www.basketball-reference.com/> usando o pacote `rvest`. O basketball reference facilita bastante o *scrap* dos dados, disponibilizando o *download* de aqruivos .csv e opções de customização das tabelas no próprio site. Vai rolar muito `%>%` e claro, muito `tidyverse`!  
 ```{r Pacotes, message=FALSE}
 library(rvest)
+library(png)#Para o logo
+library(cowplot)
 library(tidyverse)
 ```
 Vamos agora separar o link. Queremos fazer algumas análises de estatísticas avançadas de todos os jogadores. Essas informações são diariamente atualizadas em <https://www.basketball-reference.com/leagues/NBA_2019_advanced.html>. Um pequeno tutorial de como pegar a tabela correta da página.     
@@ -27,7 +29,6 @@ Para selecionar a tabela de interesse, selecionamos a opção de copiar o link d
 ```{r im_2, echo=FALSE, fig.cap="Print do direcionamento para a tabela correta.", out.width = '70%',fig.align='center'}
 knitr::include_graphics("bsr_players_adv_cop_link.png")
 ```
-
 
 ## Carregando e tratando dos dados
 
@@ -48,7 +49,32 @@ players_adv <- players_adv %>% # Pegando o dataframe
 ```
 
 Bom, vamos dar uma olhada no data set.
-```{r}
+```{r olhando o banco,include=FALSE}
 players_adv %>% head
+```
+Aparentemente está tudo ok. Vamos tentar fazer algo agora.
+
+## Um apanhado quanto as defesas na nba moderna. Afinal o pivo ainda existe na **NBA** moderna?
+
+Um questionamento que venho tendo desde as ultimas três temporadas da **NBA** é a existencia do pivo moderno. Ele realmente é um *Big man*? ou só um ala alto?  
+Pensei em começar analusando os números defensivos dessa temporada para ter uma ideia. O pivo original exerce força no ataque e protege o aro na defesa. Assim, vamos ver a fundo como se comparta uma relação do **Total Rebound Percentage** e o **Defensive Box Plus/Minus**.  O *TRP* trata-se de uma estimativa do percentual de rebotes disponiveis enquanto o mesmo estava em quadra. O *DBPM* é uma estimativa de pontos defensivos por 100 posses de bola que um jogador contribui acima da média da liga caso estivesse me um time médio da **NBA**.   
+```{r construindo uma viz}
+
+defesa <- players_adv %>%
+  filter((MP) >= quantile(MP, 0.25)) %>%
+  ggplot(aes(x = TRB., y = DBPM, 
+             color = factor(Pos,levels = c("PG", "SG", "SF", "PF", "C"))))+
+  geom_point()+
+  labs(x = "Total Rebound Percentage",
+       title = "How big is the big man today ?",
+       subtitle = "on a defensive spectrum",
+       y = "Defensive Box Plus/Minus",
+       color = "Position",
+       caption = "Dados: Basketball reference\nVisualização: @cestade7\n13/11/18")
+
+ggdraw()+
+  draw_image("cesta_7_basq.png", scale = 0.20, x=0.42,y=0.41)+
+  draw_plot(defesa)
+
 ```
 
