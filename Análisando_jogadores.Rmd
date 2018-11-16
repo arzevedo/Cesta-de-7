@@ -53,7 +53,7 @@ Bom, vamos dar uma olhada no data set.
 players_adv %>% head
 ```
 Aparentemente está tudo ok. Vamos tentar fazer algo agora.
-
+ 
 ## Um apanhado quanto as defesas na nba moderna. Afinal o pivo ainda existe na **NBA** moderna?
 
 Um questionamento que venho tendo desde as ultimas três temporadas da **NBA** é a existencia do pivo moderno. Ele realmente é um *Big man*? ou só um ala alto?  
