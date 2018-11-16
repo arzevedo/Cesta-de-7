@@ -1,8 +1,10 @@
 ---
-title: "Análise de Jogadores"
+title: "AnÃ¡lise de Jogadores"
 author: "Arthur Azevedo"
 date: "13 de novembro de 2018"
-output: html_document
+output:
+  html_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -13,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introdução
 
-O principal objtivo é extrair dados dos jogadores da **NBA**. A raspagem no site oficial da NBA é menos intuitiva, por isso vamos utilizar o site <https://www.basketball-reference.com/> usando o pacote `rvest`. O basketball reference facilita bastante o *scrap* dos dados, disponibilizando o *download* de aqruivos .csv e opções de customização das tabelas no próprio site. Vai rolar muito `%>%` e claro, muito `tidyverse`!  
+O principal objtivo é extrair dados dos jogadores da **NBA**. A raspagem no site oficial da NBA é menos intuitiva, por isso vamos utilizar o site <https://www.basketball-reference.com/> *(BR)* usando o pacote `rvest`. O basketball reference facilita bastante o *scrap* dos dados, disponibilizando o *download* de aqruivos .csv e opções de customização das tabelas no próprio site. Vai rolar muito `%>%` e claro, muito `tidyverse`!  
 ```{r Pacotes, message=FALSE}
 library(rvest)
 library(png)#Para o logo
@@ -81,27 +83,31 @@ ggdraw()+
 
 ```
 
-Vamos adicionar alguns centroids a partir de k-médias.
+Vamos adicionar alguns centroids a partir de k-médias, para achar os centros e ficar mais simples de comparar. `k = 5`
 ```{r colocando centroids, fig.align='center'}
 players_adv %>% 
   filter(MP >= quantile(MP, 0.25)) %>%
   select(DRB.,DBPM) %>% 
-  kmeans(centers = 3) -> km
+  kmeans(centers = 5) -> km
 
 centroids <- data.frame(km$centers)
-centroids <- data.frame(centroids, Cluster = factor(c(1:3)))
+centroids <- data.frame(centroids, Cluster = factor(c(1:5)))
 
 ggdraw()+
   draw_image("cesta_7_basq.png", scale = 0.20, x=0.42,y=0.41)+
   draw_plot(defesa+
-              geom_point(data = centroids, aes(x = DRB., y = DBPM,shape = Cluster), size = 8, color = "#FF3806",
-             alpha = 0.6,inherit.aes = FALSE)+
+              geom_point(data = centroids, aes(x = DRB., y = DBPM,shape = Cluster), size = 8, color = "#FF3806", stroke = 2,
+              alpha = 0.7,inherit.aes = FALSE)+
               labs(x = "Defensive Rebound Percentage",
        subtitle = "Cluster de defensores na NBA por k-médias",
-       title = "Vamos classificar a NBA em 3 posições para analisar a defesa",
+       title = "Vamos classificar a NBA em 5 posições para analisar a defesa",
        color = "Position",
        y = "Defensive Box Plus/Minus",
        caption = paste0("Dados: Basketball reference\nVisualização: @cestade7\n",
-                        "Atualizado: ",format(Sys.Date(), "%d/%m"))))
+                        "Atualizado: ",format(Sys.Date(), "%d/%m")))+
+         theme(
+           legend.position = "bottom",
+           legend.justification = "center",
+         ))
 ```
 
