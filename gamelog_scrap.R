@@ -8,13 +8,14 @@ nba_teams <- c("ATL","BOS","BRK","CHO","CHI","CLE","DAL","DEN","DET","GSW",
                "OKC","ORL","PHI","PHO","POR","SAC","SAS","TOR","UTA","WAS")
 
 tables <- list()
+tables_ano <- list()
 
-aux <- 1
 
+for(k in 2015:2019){
 for(i in nba_teams){
   
   game_log <- read_html(
-    paste0("https://www.basketball-reference.com/teams/", i,"/2019/gamelog/#tgl_basic::none")
+    paste0("https://www.basketball-reference.com/teams/", i,"/",k,"/gamelog/#tgl_basic::none")
     ) %>% 
     html_nodes("table") %>% 
     html_table() %>% 
@@ -31,10 +32,13 @@ for(i in nba_teams){
   
   tables[[i]] <- game_log
   
+}
+  tables_n <- do.call("rbind", tables)
   
+  tables_ano[[k]] <- tables_n
 }
 
-nba_teams <- do.call("rbind", tables) %>% 
+nba_teams <- do.call("rbind", tables_ano) %>% 
   rename(game = Var.2, date = Var.3, 
          home_away = Var.4, opp = Var.5,
          result = Var.6, tm_score = Var.7,
