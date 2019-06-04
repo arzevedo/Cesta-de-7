@@ -3,7 +3,7 @@ library(tidyverse)
 library(lubridate)
 library(gghighlight)
 
-nba_teams <- c("ATL","BOS","BRK","CHO","CHI","CLE","DAL","DEN","DET","GSW",
+nba_teams_names <- c("ATL","BOS","BRK","CHO","CHI","CLE","DAL","DEN","DET","GSW",
                "HOU","IND","LAC","LAL","MEM","MIA","MIL","MIN","NOP","NYK",
                "OKC","ORL","PHI","PHO","POR","SAC","SAS","TOR","UTA","WAS")
 
@@ -12,10 +12,10 @@ tables_ano <- list()
 
 
 for(k in 2015:2019){
-for(i in nba_teams){
+for(i in nba_teams_names){
   
   game_log <- read_html(
-    paste0("https://www.basketball-reference.com/teams/", i,"/",k,"/gamelog/#tgl_basic::none")
+    paste0("https://www.basketball-reference.com/teams/", i,"/", k,"/gamelog/#tgl_basic::none")
     ) %>% 
     html_nodes("table") %>% 
     html_table() %>% 
@@ -27,8 +27,9 @@ for(i in nba_teams){
       .$Var.4 == "@" ~ "F"
     )),
     Var.3 = ymd(.$Var.3)) %>% 
-    mutate_at(vars(Var.7:Opponent.15), funs(as.numeric)) %>% 
-    mutate(team_check = paste(i))
+    mutate_at(vars(Var.7:Opponent.15), list(as.numeric)) %>% 
+    mutate(team_check = paste(i),
+           season = paste(k))
   
   tables[[i]] <- game_log
   
@@ -38,7 +39,7 @@ for(i in nba_teams){
   tables_ano[[k]] <- tables_n
 }
 
-nba_teams <- do.call("rbind", tables_ano) %>% 
+nba_teamss <- do.call("rbind", tables_ano) %>% 
   rename(game = Var.2, date = Var.3, 
          home_away = Var.4, opp = Var.5,
          result = Var.6, tm_score = Var.7,
