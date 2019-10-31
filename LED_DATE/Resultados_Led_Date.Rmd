@@ -1,0 +1,144 @@
+---
+title: "Resultados Led Date"
+author: "Arthur Rios de Azevedo e João Vitor Rocha da Silva"
+date: "01/11/2019"
+output: rmarkdown::github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## Descrição das posições
+
+```{r posc_desc, echo=FALSE}
+knitr::kable(tibble("Posição" = c("PG", "SG", "SF", "PF", "C"),
+       "Nome em Português" = c("Armador", "Ala-armador", "Ala", "Ala-pivô", "Pivô"),
+       "Descrição" = c("O armador é o clássico “Técnico dentro de quadra”, de maneira geral sempre foi o melhor jogador dentro de quadra em termos de habilidades de passe e controle de bola. Tem como função liderar a equipe dentro de quadra nas execuções das jogadas propostas pelo técnico, criar oportunidades ofensivas para si e para seus companheiros de time. Normalmente sempre lidera a equipe em assistências.", 
+"Ala-armador (SG), de forma geral os ala-armadores são conhecidos por suas habilidades ofensivas e defensivas. Normalmente são os melhores defensores dentro de quadra e muitas vezes os melhores atacantes, com grande aproveitamento da linha de 3 pontos. Tem a capacidade de se mover sem a bola criando oportunidades de receber a bola do armador e finalizar a jogada.", 
+"Ala (SF), os alas são os jogadores que tem mais habilidades variadas dentro de quadra, existem diversos tipos com diversas habilidades diferentes, bons arremessadores, bons infiltradores, bons passadores ou até bons “cavadores de falta”, os alas normalmente sabem de tudo um pouco. Suas funções normalmente estão voltadas para o lado ofensivo.", 
+"Ala-pivô (PF), são os atletas que tem maior versatilidade dentro da linha de 3 pontos, seja atacando o garrafão ou arremessando de meia distância. Em termos defensivos são normalmente jogadores fortes e ágeis para marcar outros jogadores que infiltrem de forma mais rápida.",
+"Pivô (C), normalmente é o jogador que fica perto da cesta tanto no lado ofensivo quanto no lado defensivo. É normalmente o jogador mais alto dentro de quadra, e no time sempre lidera em rebotes. São os jogadores mais pesados e mais fortes dentro de quadra sempre dominando o garrafão ofensivamente e defensivamente."))
+)
+```
+
+```{r read_data, echo=FALSE, message=FALSE}
+full_cluster_data <- read_csv("cluster_final_pre_conserto.csv")
+```
+## Imagem 1
+
+```{r plot_1,  echo=FALSE,fig.height=11, fig.width=15}
+full_cluster_data %>% 
+  ggplot(aes(V1, V2, colour = Pos # ou H_clusterize 
+  )) +
+  geom_point(alpha = .8)+
+  facet_wrap(~ clust_disc, scales = "free")+
+  ggrepel::geom_text_repel(data = . %>% group_by(le_clust, season) %>% top_n(1, poss), inherit.aes = FALSE,
+                           aes(x = V1, y = V2, label = paste(player_name, season)),
+                           size = 4)+
+  scale_colour_brewer(type = "qual", palette = 6)+
+  #ggforce::geom_mark_ellipse(aes(label = H_clusterize), n = 1)+ 
+  theme_bw()+
+  labs(colour = "Posições\nClássicas", 
+       title = "MDS das variaveis selecionadas pela RF onde a  cor representa as posições clássicas\ne as facetas os agrupamentos funcionais",
+       subtitle = "Os jogadores com mais posses jogadas estão indicados em suas respectivas temporadas.",
+       x = "MDS1", y = "MDS2")+
+  theme(strip.text.x = element_text(size = 11, face = "bold"),
+        legend.text = element_text(size = 11, face = "bold"),
+        title = element_text(face = "bold", size = 13))
+
+```
+
+## Imagem 2
+```{r plot_2, echo=FALSE, fig.width=18, fig.height=10}
+
+plot_1 <- full_cluster_data %>% group_by(clust_disc, season) %>%
+  count() %>% 
+  filter(season %in% c(2014,2019)) %>% group_by(season) %>% 
+  mutate(freq = n/sum(n)) %>% 
+  ggplot(aes(season, freq, colour = clust_disc))+
+  geom_line(size = 3, linetype = 6)+ geom_point(size = 6)+
+  ggrepel::geom_text_repel(
+    data = . %>% filter(season == 2014),
+    aes(season, freq, label = paste0(round(freq*100), "%")),
+    nudge_x = -.4, show.legend=FALSE
+    ) +
+  ggrepel::geom_text_repel(
+    data = . %>% filter(season == 2019),
+    aes(season, freq, label = paste0(round(freq*100), "%")),
+    nudge_x = +.4, show.legend=FALSE
+    )+
+  scale_colour_manual(
+    values = c(
+      "Paint Finisher" = "#e41a1c",
+      "All around Offense" = "#377eb8",
+      "Perimeter Defense" = "#4daf4a",
+      "All-Star Scorers" = "#984ea3",
+      "2-Way Paint Players" = "#ff7f00",
+      "Paint Defenders" = "#ffff33",
+      "Rotation 3 point player" = "#a65628",
+      "General Rotation" = "#f781bf",
+      "3 & D" = "#999999"
+    ),
+    labels = c(
+      "Paint Finisher" = "Paint finisher",
+      "All around Offense" = "All around offense",
+      "Perimeter Defense" = "Perimeter defense",
+      "All-Star Scorers" = "All-Star scorer",
+      "2-Way Paint Players" = "2-Way paint player",
+      "Paint Defenders" = "Paint defender",
+      "Rotation 3 point player" = "Rotation 3 point shooter",
+      "General Rotation" = "General rotation",
+      "3 & D" = "3 Point shooter specialist &\ndefensive player"
+    )
+  )+
+  scale_x_continuous(labels = c(2014,2019), breaks = c(2014, 2019),
+                     limits = c(2013,2022))+
+  scale_y_continuous(labels = scales::percent, limits = c(0, .26))+
+  labs(title = "Evolução da classificação funcional através das temporadas",
+       subtitle = "Porcentagem de jogadores classificados funcionalmente nas temporadas\n2013-2014 e 2018-2019",
+       y = NULL, x = NULL, 
+       colour = "Classificação funcional")+
+  theme_minimal()+
+  theme(legend.position=c(.87,.75), title = element_text(face = "bold", size = 14),
+        legend.text = element_text(size = 11, face = "bold"), 
+        axis.text.x = element_text(size = 11, face = "bold"))
+
+ggsave(filename = "slope_chart_pos.png", width = 9, height = 10, dpi = 400)
+
+
+
+plot_2 <- full_cluster_data %>% group_by(Pos, season) %>%
+  count() %>% 
+  filter(season %in% c(2014,2019)) %>% group_by(season) %>% 
+  mutate(freq = n/sum(n)) %>% 
+  ggplot(aes(season, freq, colour = Pos))+
+  geom_line(size = 3, linetype = 6)+ geom_point(size = 6)+
+  ggrepel::geom_text_repel(
+    data = . %>% filter(season == 2014),
+    aes(season, freq, label = paste0(round(freq*100), "%")),
+    nudge_x = -.4, show.legend=FALSE
+  ) +
+  ggrepel::geom_text_repel(
+    data = . %>% filter(season == 2019),
+    aes(season, freq, label = paste0(round(freq*100), "%")),
+    nudge_x = +.4, show.legend=FALSE
+  ) +
+  scale_x_continuous(labels = c(2014,2019), breaks = c(2014, 2019),
+                     limits = c(2013,2022))+
+  scale_y_continuous(labels = scales::percent, limits = c(0, .26))+
+  labs(title = "Evolução das posições clássicas através das temporadas",
+       subtitle = "Porcentagem de jogadores em suas respectivas posições nas temporadas\n2013-2014 e 2018-2019",
+       y = NULL, x = NULL, colour = "Posições\nClássicas")+
+  
+  scale_colour_brewer(type = "qual", palette = 2)+
+  theme_minimal()+
+  theme(legend.position=c(.85,.75), title = element_text(face = "bold", size = 14),
+        legend.text = element_text(size = 11, face = "bold"), 
+        axis.text.x = element_text(size = 11, face = "bold"))
+
+cowplot::plot_grid(plot_1, plot_2)
+
+```
+
