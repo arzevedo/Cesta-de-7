@@ -1,4 +1,4 @@
-# Cesta de 7
+# Cesta de 7 <img src="cesta_7_basq.png" align="right" width="100" />
 Um repositório para códigos usados em postagens e gravações do [blog cesta de 7](https://cestade7.wordpress.com/)
 O podcast está disponivel nas mais diversas plataformas de podcast como Itunes e [spotfy](https://open.spotify.com/show/2vJsPQTTE5DqhAhmA4wX7O?si=WLa091GhSSez_BTH6Jx5rg).
 
