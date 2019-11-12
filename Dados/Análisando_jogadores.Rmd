@@ -20,6 +20,7 @@ O principal objtivo é extrair dados dos jogadores da **NBA**. A raspagem no sit
 library(rvest)
 library(png)#Para o logo
 library(cowplot)
+library(ggimage)
 library(tidyverse)
 ```
 Vamos agora separar o link. Queremos fazer algumas análises de estatísticas avançadas de todos os jogadores. Essas informações são diariamente atualizadas em <https://www.basketball-reference.com/leagues/NBA_2019_advanced.html>. Um pequeno tutorial de como pegar a tabela correta da página.     
@@ -109,5 +110,65 @@ ggdraw()+
            legend.position = "bottom",
            legend.justification = "center",
          ))
+```
+
+
+
+
+## Vamos observar o PER, agrupando por times, podemos ver quais são os melhores?
+O PER é uma estatistica relativamente antiga, ela mede a eficiencia do jogador em quadra. Embora muito criticada por substimar jogadores que tem mais habilidades defensivas do ofensivas, ainda é muito utilizada para comparar jogadores.  
+
+Vamos ver como os times estão em relação ao PER de seus jogadores nessa temporada.
+
+Primeiro vamos ver como estão distribuidos o PER dos jogadores, com o fim de definir uma medida de posição eficiente para avaliar os times.
+
+```{r}
+players_adv %>% 
+  ggplot(aes(x = PER))+
+  geom_histogram(bins = 30)
+```
+Vemos alguma incosistencia nos dados, tem alguem com o PER perto de 90 e isso é inviavel. O jogador com esse número só jogou apenas 1 minuto e como fez uma cesta o seu número explodiu.  
+Vamos filtrar melhor os jogadores para analisar o PER. Preferi pegar jogadores que jogaram minutos acima do primeiro quartil, nesse ponto da temporada é um número reazoavel.
+```{r}
+players_adv %>% 
+  filter(MP >= quantile(MP, 0.25)) %>% 
+  ggplot(aes(x = PER))+
+  geom_histogram(bins = 8)
+```
+O PER é centrado na média, mas existe um desvio pesado. Vamos usar a média mesmo assim, entretanto vamos adicionar uma medida de dispersão para analisar os times.
+```{r}
+players_adv %>% 
+  filter(MP >= quantile(MP, 0.25)) %>% 
+  group_by(Tm) %>% 
+  filter(!(Tm == "TOT")) %>% # TIRANDO A GALERA SEM TIME
+  summarise(per_med = mean(PER), per_sd = sd(PER)) %>% 
+  arrange(desc(per_med))
+```  
+Como esperado, Os melhores times até agora da temporada estão com o PER médio maior entre seus jogadores.  
+Vamos fazer uma viz com esses dados!.
+```{r}
+nbaTeams=c("ATL","BOS","BKN","CHA","CHI","CLE","DAL","DEN","DET","GSW",
+           "HOU","IND","LAC","LAL","MEM","MIA","MIL","MIN","NOP","NYK",
+           "OKC","ORL","PHI","PHX","POR","SAC","SAS","TOR","UTA","WAS")
+per_team_viz <- players_adv %>% 
+  filter(MP >= quantile(MP, 0.25)) %>% 
+  filter(USG. >= quantile(USG., 0.25)) %>% 
+  group_by(Tm) %>% 
+  filter(!(Tm == "TOT")) %>% # TIRANDO A GALERA SEM TIME
+  summarise(per_med = mean(PER), per_sd = sd(PER)) %>% 
+  mutate(logo = paste0("logo_times/",nbaTeams,".png")) 
+per_team_viz %>% 
+  ggplot(aes(x = per_med, y = per_sd, label = Tm))+
+  geom_image(data = per_team_viz, aes(image = per_team_viz$logo), size = 0.12,
+             by = "width")+
+  coord_fixed()
+```
+UAU, A galera do tank está realmente proeminente, mas creio que usar a média foi um erro, alguns times não se adaptaram bem ao filtro que utilizei. Vamos observar quantos jogadores temos por time com esse filtro que estou usando.
+```{r}
+players_adv %>% 
+  filter(MP >= quantile(MP, 0.25)) %>% 
+  filter(USG. >= quantile(USG., 0.25)) %>% 
+  group_by(Tm) %>% 
+  count(sort = TRUE)
 ```
 
