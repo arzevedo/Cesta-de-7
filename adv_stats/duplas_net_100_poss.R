@@ -33,10 +33,13 @@ for(teams in nbaTeams){
   
   duplas_nba[[teams]] <- duplas
   
-  cat(teams)
+  cat(teams,"\n")
+  
+  Sys.sleep(15)
   
 }
 
+BRRR::skrrrahh()
 
 df_duplas <- map_df(duplas_nba, bind_rows) %>% as_tibble() %>% 
   filter(lineup != "TeamAverage")
@@ -45,9 +48,6 @@ df_duplas <- map_df(duplas_nba, bind_rows) %>% as_tibble() %>%
 df_duplas %>% 
  ggplot(aes(mp)) +
   geom_histogram(bins = 20)
-# Filtrando por quantis
-df_duplas <- df_duplas %>% 
-  filter(mp > quantile(mp, .25))
 # Um exemplo das duplas mais eficientes por time
 df_duplas %>% 
   group_by(team) %>% 
