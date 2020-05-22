@@ -1,0 +1,85 @@
+---
+title: "Centerless Rockets"
+author: "Cesta de 7"
+date: "17/05/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(janitor)
+library(rvest)
+```
+
+Com capela
+
+https://stats.nba.com/team/1610612745/onoffcourt-scoring/?Season=2019-20&SeasonType=Regular%20Season&DateTo=01%2F30%2F2020
+
+Sem Capela
+https://stats.nba.com/team/1610612745/onoffcourt-scoring/?Season=2019-20&SeasonType=Regular%20Season&DateFrom=01%2F30%2F2020&DateTo=05%2F17%2F2020
+
+```{r}
+link_2_tab <- "https://stats.nba.com/stats/teamplayeronoffdetails?DateFrom=&DateTo=01%2F30%2F2020&GameSegment=&LastNGames=0&LeagueID=00&Location=&MeasureType=Scoring&Month=0&OpponentTeamID=0&Outcome=&PaceAdjust=N&PerMode=PerGame&Period=0&PlusMinus=N&Rank=N&Season=2019-20&SeasonSegment=&SeasonType=Regular+Season&TeamID=1610612745&VsConference=&VsDivision="
+link_to_json <- httr::GET(url = link_2_tab,
+                      
+                      httr::add_headers(.headers = c('Accept'= 'application/json, text/plain, */*','Accept-Encoding'='gzip, deflate, br',
+                                                     'Accept-Language'='en-US,en;q=0.9','Connection'='keep-alive','Host'= 'stats.nba.com',
+                                                     'Referer'='https://stats.nba.com/','Sec-Fetch-Mode'='cors','Sec-Fetch-Site'= 'same-origin',
+                                                     'User-Agent'= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) 
+          Chrome/79.0.3945.130 Safari/537.36','x-nba-stats-origin'= 'stats','x-nba-stats-token'= 
+                                                       'true'))
+                      
+)
+
+nba_json <- fromJSON(link_to_json %>% read_html() %>% html_text())
+
+onoff_com_cap <- as.data.frame(nba_json$resultSets$rowSet %>% .[2]) %>% tidyr::as_tibble() %>% 
+  select_all(list(~ paste0("ON_", nba_json$resultSets$headers[[2]]))) %>% 
+  inner_join(
+    as.data.frame(nba_json$resultSets$rowSet %>% .[3]) %>% tidyr::as_tibble() %>% 
+      select_all(list(~ paste0("OFF_", nba_json$resultSets$headers[[3]]))),
+    by = c("ON_VS_PLAYER_NAME"="OFF_VS_PLAYER_NAME")
+  ) %>% 
+  select(- contains("TEAM_ID"), - contains("GROUP_SET"), - contains("TEAM_ABBREVI"),
+         -contains("VS_PLAYER_ID"), -contains("TEAM_NAME"), -contains("COURT_STATUS")) %>% 
+  mutate(split = "With")
+
+
+
+link_2_tab <- "https://stats.nba.com/stats/teamplayeronoffdetails?DateFrom=01%2F30%2F2020&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&MeasureType=Scoring&Month=0&OpponentTeamID=0&Outcome=&PaceAdjust=N&PerMode=PerGame&Period=0&PlusMinus=N&Rank=N&Season=2019-20&SeasonSegment=&SeasonType=Regular+Season&TeamID=1610612745&VsConference=&VsDivision="
+link_to_json <- httr::GET(url = link_2_tab,
+                          
+                          httr::add_headers(.headers = c('Accept'= 'application/json, text/plain, */*','Accept-Encoding'='gzip, deflate, br',
+                                                         'Accept-Language'='en-US,en;q=0.9','Connection'='keep-alive','Host'= 'stats.nba.com',
+                                                         'Referer'='https://stats.nba.com/','Sec-Fetch-Mode'='cors','Sec-Fetch-Site'= 'same-origin',
+                                                         'User-Agent'= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) 
+          Chrome/79.0.3945.130 Safari/537.36','x-nba-stats-origin'= 'stats','x-nba-stats-token'= 
+                                                           'true'))
+                          
+)
+
+nba_json <- fromJSON(link_to_json %>% read_html() %>% html_text())
+
+onoff_sem_cap <- as.data.frame(nba_json$resultSets$rowSet %>% .[2]) %>% tidyr::as_tibble() %>% 
+  select_all(list(~ paste0("ON_", nba_json$resultSets$headers[[2]]))) %>% 
+  inner_join(
+    as.data.frame(nba_json$resultSets$rowSet %>% .[3]) %>% tidyr::as_tibble() %>% 
+      select_all(list(~ paste0("OFF_", nba_json$resultSets$headers[[3]]))),
+    by = c("ON_VS_PLAYER_NAME"="OFF_VS_PLAYER_NAME")
+  ) %>% 
+  select(- contains("TEAM_ID"), - contains("GROUP_SET"), - contains("TEAM_ABBREVI"),
+         -contains("VS_PLAYER_ID"), -contains("TEAM_NAME"), -contains("COURT_STATUS")) %>% 
+  mutate(split = "Without")
+
+
+ult_df <- onoff_com_cap %>% 
+  bind_rows(onoff_sem_cap) %>% 
+  mutate_at(.vars = vars(-ON_VS_PLAYER_NAME, -split), as.numeric)
+
+
+ult_df %>% group_by(split) %>% 
+  summarise(rz_on = max(ON_W/(ON_GP)),
+            rz_off = max(OFF_W/(OFF_GP)))
+
+```

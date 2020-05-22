@@ -1,0 +1,35 @@
+---
+title: "Zion Impact"
+author: "Cesta de 7"
+date: "15/05/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(janitor)
+library(rvest)
+```
+
+Dados do BR
+```{r}
+"https://www.basketball-reference.com/teams/NOP/2020/on-off/"
+"https://www.basketball-reference.com/teams/NOP/2020/gamelog/"
+read_html(
+  "https://widgets.sports-reference.com/wg.fcgi?css=1&site=bbr&url=%2Fteams%2FNOP%2F2020.html&div=div_pbp"
+) %>% 
+  html_node("table") %>% html_table() %>% .[-1,-1] %>% clean_names() %>% 
+  mutate_all(na_if,"") %>% as_tibble() %>% 
+  rename(
+    player = x, age = x1, games = x2, mp = x3, played_pg = position_estimate, 
+    played_sg = position_estimate_1, played_sf = position_estimate_2, played_pf = position_estimate_3,
+    played_c = position_estimate_4, pm_on_court = per_100_poss, pm_onoff = per_100_poss_1, 
+    badpass = turnovers, lostball = turnovers_1, fouls_shot = fouls_committed, 
+    fouls_off = fouls_committed_1, draw_shot_fouls = fouls_drawn, draw_off_fouls = fouls_drawn_1,
+    PGA = misc, and1 = misc_1, blckd = misc_2
+  )
+```
+
+
+
