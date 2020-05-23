@@ -19,17 +19,17 @@ https://stats.nba.com/team/1610612745/onoffcourt-scoring/?Season=2019-20&SeasonT
 Sem Capela
 https://stats.nba.com/team/1610612745/onoffcourt-scoring/?Season=2019-20&SeasonType=Regular%20Season&DateFrom=01%2F30%2F2020&DateTo=05%2F17%2F2020
 
-```{r}
+```{r Download data}
 link_2_tab <- "https://stats.nba.com/stats/teamplayeronoffdetails?DateFrom=&DateTo=01%2F30%2F2020&GameSegment=&LastNGames=0&LeagueID=00&Location=&MeasureType=Scoring&Month=0&OpponentTeamID=0&Outcome=&PaceAdjust=N&PerMode=PerGame&Period=0&PlusMinus=N&Rank=N&Season=2019-20&SeasonSegment=&SeasonType=Regular+Season&TeamID=1610612745&VsConference=&VsDivision="
 link_to_json <- httr::GET(url = link_2_tab,
-                      
-                      httr::add_headers(.headers = c('Accept'= 'application/json, text/plain, */*','Accept-Encoding'='gzip, deflate, br',
-                                                     'Accept-Language'='en-US,en;q=0.9','Connection'='keep-alive','Host'= 'stats.nba.com',
-                                                     'Referer'='https://stats.nba.com/','Sec-Fetch-Mode'='cors','Sec-Fetch-Site'= 'same-origin',
-                                                     'User-Agent'= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) 
+                          
+                          httr::add_headers(.headers = c('Accept'= 'application/json, text/plain, */*','Accept-Encoding'='gzip, deflate, br',
+                                                         'Accept-Language'='en-US,en;q=0.9','Connection'='keep-alive','Host'= 'stats.nba.com',
+                                                         'Referer'='https://stats.nba.com/','Sec-Fetch-Mode'='cors','Sec-Fetch-Site'= 'same-origin',
+                                                         'User-Agent'= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) 
           Chrome/79.0.3945.130 Safari/537.36','x-nba-stats-origin'= 'stats','x-nba-stats-token'= 
-                                                       'true'))
-                      
+            'true'))
+          
 )
 
 nba_json <- fromJSON(link_to_json %>% read_html() %>% html_text())
@@ -55,8 +55,8 @@ link_to_json <- httr::GET(url = link_2_tab,
                                                          'Referer'='https://stats.nba.com/','Sec-Fetch-Mode'='cors','Sec-Fetch-Site'= 'same-origin',
                                                          'User-Agent'= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) 
           Chrome/79.0.3945.130 Safari/537.36','x-nba-stats-origin'= 'stats','x-nba-stats-token'= 
-                                                           'true'))
-                          
+            'true'))
+          
 )
 
 nba_json <- fromJSON(link_to_json %>% read_html() %>% html_text())
@@ -78,8 +78,36 @@ ult_df <- onoff_com_cap %>%
   mutate_at(.vars = vars(-ON_VS_PLAYER_NAME, -split), as.numeric)
 
 
-ult_df %>% group_by(split) %>% 
-  summarise(rz_on = max(ON_W/(ON_GP)),
-            rz_off = max(OFF_W/(OFF_GP)))
+ult_df %>% write_csv("centerless_rockets.csv")
 
 ```
+
+```{r load data}
+rockets_df <- read_csv("centerless_rockets.csv")
+```
+
+```{r}
+pl_long <- rockets_df %>% 
+  pivot_longer(cols = ON_GP:OFF_PCT_UAST_FGM_RANK, names_to = "variable", values_to = "value") %>% 
+  mutate(on_off = ifelse(str_detect(variable, "ON"), "ON", "OFF"),
+         variable = str_remove(variable, "ON_|OFF_")) %>% 
+  rename(player = ON_VS_PLAYER_NAME) %>% 
+  group_by(player, variable, split) %>% 
+  mutate(on_off_diff = diff(value)) %>% 
+  ungroup()
+
+capela <- pl_long %>% filter(str_detect(player, "Capela"))
+```
+
+Vamos pegar jogadores que jogaram com e sem o capela
+```{r}
+pl_w_and_wo_capela <- pl_long %>% group_by(player) %>% count() %>% filter(n>80) %>% pull(player)
+
+df_w_wo_c <- pl_long %>% filter(player %in% pl_w_and_wo_capela) %>% 
+  filter(on_off == "ON") %>% 
+  select(- value, - on_off) %>% 
+  pivot_wider(names_from = variable, values_from = on_off_diff)
+
+df_w_wo_c
+```
+
