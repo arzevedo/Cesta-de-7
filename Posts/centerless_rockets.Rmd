@@ -87,7 +87,7 @@ rockets_df <- read_csv("centerless_rockets.csv")
 ```
 
 ```{r}
-pl_long <- rockets_df %>% 
+pl_on_off <- rockets_df %>% 
   pivot_longer(cols = ON_GP:OFF_PCT_UAST_FGM_RANK, names_to = "variable", values_to = "value") %>% 
   mutate(on_off = ifelse(str_detect(variable, "ON"), "ON", "OFF"),
          variable = str_remove(variable, "ON_|OFF_")) %>% 
@@ -97,9 +97,31 @@ pl_long <- rockets_df %>%
   filter(n() > 1) %>%
   mutate(
     diff = lag(value) - value
-    )
+    ) %>% drop_na() %>% select(- on_off, - value) %>% 
+  pivot_wider(names_from = variable, values_from = diff) %>% 
+  select(!contains("RANK")) #Drop rank
 
-capela <- pl_long %>% filter(str_detect(player, "Capela"))
+capela <- pl_on_off %>% filter(str_detect(player, "Capela"))
 ```
 
 Vamos pegar jogadores que jogaram com e sem capela
+```{r}
+pl_compare_impact <- pl_on_off %>% group_by(player) %>% count() %>% filter(n == 2) %>% 
+  pull(player)
+```
+
+```{r}
+pl_on_off %>% 
+  ggplot(aes(PCT_AST_FGM, PCT_PTS_PAINT, colour = split,
+             label = player)) +
+  geom_point() +
+  labs(title = "O estilo de jogo mudou ao nivel do jogador ?",
+       subtitle = "Comparação com e sem capela no elenco") +
+  ggrepel::geom_text_repel(data = pl_on_off %>%
+                             filter(
+                               PCT_AST_FGM >= 0.15 | PCT_AST_FGM <= -.08 |
+                               PCT_PTS_PAINT >= .05 | PCT_PTS_PAINT <= - .09
+                             )
+                           )
+```
+
