@@ -91,23 +91,15 @@ pl_long <- rockets_df %>%
   pivot_longer(cols = ON_GP:OFF_PCT_UAST_FGM_RANK, names_to = "variable", values_to = "value") %>% 
   mutate(on_off = ifelse(str_detect(variable, "ON"), "ON", "OFF"),
          variable = str_remove(variable, "ON_|OFF_")) %>% 
+  #pivot_wider(names_from = variable, values_from = value) %>% 
   rename(player = ON_VS_PLAYER_NAME) %>% 
-  group_by(player, variable, split) %>% 
-  mutate(on_off_diff = diff(value)) %>% 
-  ungroup()
+  group_by(player, split, variable) %>% 
+  filter(n() > 1) %>%
+  mutate(
+    diff = lag(value) - value
+    )
 
 capela <- pl_long %>% filter(str_detect(player, "Capela"))
 ```
 
-Vamos pegar jogadores que jogaram com e sem o capela
-```{r}
-pl_w_and_wo_capela <- pl_long %>% group_by(player) %>% count() %>% filter(n>80) %>% pull(player)
-
-df_w_wo_c <- pl_long %>% filter(player %in% pl_w_and_wo_capela) %>% 
-  filter(on_off == "ON") %>% 
-  select(- value, - on_off) %>% 
-  pivot_wider(names_from = variable, values_from = on_off_diff)
-
-df_w_wo_c
-```
-
+Vamos pegar jogadores que jogaram com e sem capela
