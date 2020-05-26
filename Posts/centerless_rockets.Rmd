@@ -115,13 +115,21 @@ pl_on_off %>%
   group_by(split) %>% top_n(7, MIN) %>% ungroup() %>% 
   ggplot(aes(PCT_AST_FGM, PCT_PTS_PAINT, colour = split,
              label = player)) +
+  geom_line(aes(group = player), color = "gray80")+
   geom_point() +
-  labs(title = "O estilo de jogo mudou ao nivel do jogador ?",
+  labs(title = "Comparação no elenco top 7 jogadores com mais minutos",
        y = "% Pontos no garrafão",
        x = "% FG feitos provenientes de assitencia",
-       colour = "",
-       subtitle = "Comparação com e sem capela no elenco (dentro - fora de quadra)") +
+       subtitle = "Diferença entre dentro e fora de quadra",
+       caption = "Fonte: stats.nba.com") +
   ggrepel::geom_text_repel() +
-  theme_light()
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  theme_light() +
+  scale_colour_manual(values = c("With" = "#F5A8A0", "Without" = "#F23827")) +
+  theme(
+    legend.position = c(.9,.7),
+    legend.background = element_blank(),
+    legend.title = element_blank()
+  )
 ```
 
