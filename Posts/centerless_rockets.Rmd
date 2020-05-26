@@ -112,16 +112,16 @@ pl_compare_impact <- pl_on_off %>% group_by(player) %>% count() %>% filter(n == 
 
 ```{r}
 pl_on_off %>% 
+  group_by(split) %>% top_n(7, MIN) %>% ungroup() %>% 
   ggplot(aes(PCT_AST_FGM, PCT_PTS_PAINT, colour = split,
              label = player)) +
   geom_point() +
   labs(title = "O estilo de jogo mudou ao nivel do jogador ?",
-       subtitle = "Comparação com e sem capela no elenco") +
-  ggrepel::geom_text_repel(data = pl_on_off %>%
-                             filter(
-                               PCT_AST_FGM >= 0.15 | PCT_AST_FGM <= -.08 |
-                               PCT_PTS_PAINT >= .05 | PCT_PTS_PAINT <= - .09
-                             )
-                           )
+       y = "% Pontos no garrafão",
+       x = "% FG feitos provenientes de assitencia",
+       colour = "",
+       subtitle = "Comparação com e sem capela no elenco (dentro - fora de quadra)") +
+  ggrepel::geom_text_repel() +
+  theme_light()
 ```
 
