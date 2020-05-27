@@ -12,14 +12,7 @@ library(janitor)
 library(rvest)
 ```
 
-Com capela
-
-https://stats.nba.com/team/1610612745/onoffcourt-scoring/?Season=2019-20&SeasonType=Regular%20Season&DateTo=01%2F30%2F2020
-
-Sem Capela
-https://stats.nba.com/team/1610612745/onoffcourt-scoring/?Season=2019-20&SeasonType=Regular%20Season&DateFrom=01%2F30%2F2020&DateTo=05%2F17%2F2020
-
-```{r Download data}
+```{r Download data, include=FALSE}
 link_2_tab <- "https://stats.nba.com/stats/teamplayeronoffdetails?DateFrom=&DateTo=01%2F30%2F2020&GameSegment=&LastNGames=0&LeagueID=00&Location=&MeasureType=Scoring&Month=0&OpponentTeamID=0&Outcome=&PaceAdjust=N&PerMode=PerGame&Period=0&PlusMinus=N&Rank=N&Season=2019-20&SeasonSegment=&SeasonType=Regular+Season&TeamID=1610612745&VsConference=&VsDivision="
 link_to_json <- httr::GET(url = link_2_tab,
                           
@@ -82,11 +75,11 @@ ult_df %>% write_csv("centerless_rockets.csv")
 
 ```
 
-```{r load data}
+```{r load data, include=FALSE}
 rockets_df <- read_csv("centerless_rockets.csv")
 ```
 
-```{r}
+```{r tidy data, include=FALSE}
 pl_on_off <- rockets_df %>% 
   pivot_longer(cols = ON_GP:OFF_PCT_UAST_FGM_RANK, names_to = "variable", values_to = "value") %>% 
   mutate(on_off = ifelse(str_detect(variable, "ON"), "ON", "OFF"),
@@ -105,12 +98,12 @@ capela <- pl_on_off %>% filter(str_detect(player, "Capela"))
 ```
 
 Vamos pegar jogadores que jogaram com e sem capela
-```{r}
+```{r compare players}
 pl_compare_impact <- pl_on_off %>% group_by(player) %>% count() %>% filter(n == 2) %>% 
   pull(player)
 ```
 
-```{r}
+```{r plot1}
 pl_on_off %>% 
   group_by(split) %>% top_n(7, MIN) %>% ungroup() %>% 
   ggplot(aes(PCT_AST_FGM, PCT_PTS_PAINT, colour = split,
@@ -125,7 +118,8 @@ pl_on_off %>%
   ggrepel::geom_text_repel() +
   guides(colour = guide_legend(override.aes = list(size=2))) +
   theme_light() +
-  scale_colour_manual(values = c("With" = "#F5A8A0", "Without" = "#F23827")) +
+  scale_colour_manual(values = c("With" = "#F5A8A0", "Without" = "#F23827"), 
+                      labels = c("With" = "Com Capela", "Without" = "Sem Capela")) +
   theme(
     legend.position = c(.9,.7),
     legend.background = element_blank(),
@@ -133,3 +127,35 @@ pl_on_off %>%
   )
 ```
 
+### Para quais times o Rockets perderam
+
+```{r}
+read_html("https://www.basketball-reference.com/teams/HOU/2020_games.html#games::none") %>% 
+  html_nodes("table") %>% 
+  html_table() %>% as.data.frame() %>% as_tibble() %>% 
+  filter(Opponent != "Opponent", Var.8 == "L") %>%
+  mutate_at(vars(G, Tm, Opp), as.numeric) %>%# %>% count(Opponent, sort = TRUE)
+  transmute(G, Opponent, diffe = Tm - Opp)
+```
+
+### Estudo de caso West
+
+Seria a melhor  versão de Westbrook que já vimos? Ou pelo menos o melhor esquema em que Westbrook já jogou? 
+
+```{r}
+
+```
+
+
+# Links
+
+Com capela
+
+https://stats.nba.com/team/1610612745/lineups-scoring/?CF=MIN*G*10&Season=2019-20&SeasonType=Regular%20Season
+
+https://stats.nba.com/team/1610612745/shots-dash/
+
+https://stats.nba.com/team/1610612745/onoffcourt-scoring/?Season=2019-20&SeasonType=Regular%20Season&DateTo=01%2F30%2F2020
+
+Sem Capela
+https://stats.nba.com/team/1610612745/onoffcourt-scoring/?Season=2019-20&SeasonType=Regular%20Season&DateFrom=01%2F30%2F2020&DateTo=05%2F17%2F2020
