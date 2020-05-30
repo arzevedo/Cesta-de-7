@@ -259,6 +259,7 @@ Não pensei em tirar nada daqui.
 Seria a melhor  versão de Westbrook que já vimos? Ou pelo menos o melhor esquema em que Westbrook já jogou? 
 
 ```{r west shot}
+
 master_list <- list()
 
 for(i in c("2019-20", "2018-19", "2017-18", "2016-17", "2015-16", "2014-15", "2013-14")){
@@ -284,7 +285,27 @@ for(i in c("2019-20", "2018-19", "2017-18", "2016-17", "2015-16", "2014-15", "20
   master_list[[i]] <- map(shot_json$resultSets$rowSet, tidyr::as_tibble)
   cat(i, "\n")
   Sys.sleep(20)
+  
 }
+
+
+russ_thund <- map_dfr(master_list[2:7], bind_rows) %>% 
+  select_all(~shot_json$resultSets$headers[1] %>% unlist()) %>% 
+  mutate(year = c(
+    rep("18-19", 27), rep("17-18", 27), rep("16-17", 27), rep("15-16", 27),
+    rep("14-15", 27), rep("13-14", 27)
+  )
+  ) %>% janitor::clean_names() %>% 
+  filter(shot_type != "Overall") %>% select(-(1:3)) %>% 
+  mutate_at(vars(-shot_type, -year),as.numeric) %>% 
+  group_by(shot_type) %>% 
+  summarise_all(mean)
+
+russ_tod <- map_dfr(master_list[1], bind_rows) %>% 
+  select_all(~shot_json$resultSets$headers[1] %>% unlist()) %>% 
+  mutate(year = "19-20") %>% 
+  janitor::clean_names() %>% 
+  filter(shot_type != "Overall") %>% select(-(1:3))
 ```
 
 
