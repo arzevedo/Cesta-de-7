@@ -10,9 +10,10 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(janitor)
 library(rvest)
+library(jsonlite)
 ```
 
-```{r Download data, include=FALSE}
+```{r Download data, include=FALSE,eval=FALSE}
 link_2_tab <- "https://stats.nba.com/stats/teamplayeronoffdetails?DateFrom=&DateTo=01%2F30%2F2020&GameSegment=&LastNGames=0&LeagueID=00&Location=&MeasureType=Scoring&Month=0&OpponentTeamID=0&Outcome=&PaceAdjust=N&PerMode=PerGame&Period=0&PlusMinus=N&Rank=N&Season=2019-20&SeasonSegment=&SeasonType=Regular+Season&TeamID=1610612745&VsConference=&VsDivision="
 link_to_json <- httr::GET(url = link_2_tab,
                           
@@ -90,7 +91,7 @@ pl_on_off <- rockets_df %>%
   filter(n() > 1) %>%
   mutate(
     diff = lag(value) - value
-    ) %>% drop_na() %>% select(- on_off, - value) %>% 
+  ) %>% drop_na() %>% select(- on_off, - value) %>% 
   pivot_wider(names_from = variable, values_from = diff) %>% 
   select(!contains("RANK")) #Drop rank
 
@@ -127,16 +128,131 @@ pl_on_off %>%
   )
 ```
 
+Esse gráfico mostra o impacto de cada jogador (com as maiores quantidades de minutos) na % de pontos no garrafão e % de cestas convertidas que vieram de assistência.
+Por exemplo: se um jogador  subiu e foi para a direita na visualização, ele proporciona um crescimento na % de cestas do time provenientes de assistências e na % de pontos no garrafão (lembrando que o impacto é medido pela diferença do jogador dentro e fora de quadra).
+O que mais nos salta os olhos é o Power Duo do Rockets.
+Harden não teve tanto impacto no estilo de jogo no que tange % de pontos no garrafão, entretanto todo o impacto foi na % de cestas feitas por assistência. A melhor hipótese que chegamos para explicar tal fenômeno foi o reflexo do espaçamento, Barba continua fazendo as suas isolations mesmo sem capela, mas o espaçamento aumentou o número de oportunidade para passes melhores e consequentemente arremessos melhores. Além disso, Harden foi o que teve o maior deslocamento absoluto da era small ball para micro ball entre todos os jogadores.
+Westbrook teve o deslocamento contrário a Harden na % de cestas com assistência. Em outras palavras quando ele está em quadra desde que Capela foi para Atlanta, o Rockets faz menos cestas derivadas de assistência. Nossa suposição quanto a esse caso vem do teste do olho mesmo. Westbrook absorveu todos os seus poderes de semideus de slasher e abandonou de vez o seu inferno de shooter, digo está atacando a cesta com tanta eficiência quando está em quadra, que o número de cestas com assistência do Rockets caiu mesmo ele sendo um exímio passador. Falaremos muito mais dessa versão de Russel Westbrook aqui no cesta de 7.
+
 ### Para quais times o Rockets perderam
 
-```{r}
-read_html("https://www.basketball-reference.com/teams/HOU/2020_games.html#games::none") %>% 
+```{r losers, include=FALSE}
+
+lost_games <- read_html("https://www.basketball-reference.com/teams/HOU/2020_games.html#games::none") %>% 
   html_nodes("table") %>% 
   html_table() %>% as.data.frame() %>% as_tibble() %>% 
   filter(Opponent != "Opponent", Var.8 == "L") %>%
   mutate_at(vars(G, Tm, Opp), as.numeric) %>%# %>% count(Opponent, sort = TRUE)
-  transmute(G, Opponent, diffe = Tm - Opp)
+  transmute(date = str_remove(Date, ".+?,") %>% lubridate::mdy(),
+            G, Opponent, diffe = Tm - Opp) %>% 
+  mutate(split = ifelse(G >= 48, "Sem Capela", "Com Capela"),
+         media = mean(diffe))
+
+lost_games %>% 
+  ggplot(aes(x = date, y = diffe, color = split)) +
+  labs(
+    title = "Derrotas do Rockets nessa temporada",
+    x = NULL, y = "Diferença de pontos",
+    caption = "Fonte: www.basketball-reference.com"
+  ) +
+  geom_line(linetype = 4,show.legend = FALSE) + geom_point() +
+  theme_light() +
+  ggrepel::geom_text_repel(
+    data = lost_games %>% filter(diffe < -25), show.legend = FALSE,
+    aes(label = Opponent), nudge_y = -2,nudge_x = -2, segment.color = "gray95"
+  ) +
+  guides(color = guide_legend(override.aes = list(size=5, linetype = 1))) +
+  scale_color_manual(values = c("Sem Capela" = "#F23827", "Com Capela" = "#F5A8A0")) +
+  theme(
+    legend.position = c(.3,.3),
+    legend.background = element_blank(),
+    legend.title = element_blank()
+  )
 ```
+Observando os jogos que o Time do Texas perdeu depois de abdicar de seu pivô, podemos ver a derrota grotesca para o suns por 36 pontos. Kelly Oubre e Devin Booker combinaram para 28 pontos no primeiro quarto. Para completar a bola de 3 não caiu (a não ser a de Harden 5-10). A defesa é sem dúvida a pior parte desse novo rockets. 
+Vamos explorar isso então.
+
+### Defesa do Rockets
+
+```{r defense, include=FALSE}
+deflink <- httr::GET(url = "https://stats.nba.com/stats/teamgamelogs?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&MeasureType=Misc&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PaceAdjust=N&PerMode=Totals&Period=0&PlusMinus=N&Rank=N&Season=2019-20&SeasonSegment=&SeasonType=Regular+Season&ShotClockRange=&TeamID=1610612745&VsConference=&VsDivision=",
+                     
+                     httr::add_headers(.headers = c('Accept'= 'application/json, text/plain, */*','Accept-Encoding'='gzip, deflate, br',
+                                                    'Accept-Language'='en-US,en;q=0.9','Connection'='keep-alive','Host'= 'stats.nba.com',
+                                                    'Referer'='https://stats.nba.com/','Sec-Fetch-Mode'='cors','Sec-Fetch-Site'= 'same-origin',
+                                                    'User-Agent'= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) 
+          Chrome/79.0.3945.130 Safari/537.36','x-nba-stats-origin'= 'stats','x-nba-stats-token'= 
+            'true'))
+          
+)
+
+def_json <- fromJSON(link_to_json %>% read_html() %>% html_text())
+
+def_df <- as.data.frame(def_json$resultSets$rowSet) %>% tidyr::as_tibble() %>% 
+  select_all(list(~ paste0(def_json$resultSets$headers[[1]])))
+
+write_csv(def_df, "Posts/def_Hou.csv")
+
+def_df <- read_csv("def_Hou.csv") %>% 
+  select(GAME_DATE, MATCHUP, WL, MIN, contains("OPP"), - contains("RANK")) %>% 
+  janitor::clean_names() %>% 
+  mutate(split = ifelse(game_date >= lubridate::as_date("2020-01-30"), 
+                        "Sem Capela", "Com Capela"))
+
+def_df %>% 
+  ggplot(aes(game_date, opp_pts_paint, color = split, group = 1)) +
+  theme_light() +
+  geom_segment( linetype = 2, size = .2,
+    x = def_df %>% pull(game_date) %>% min(), xend = def_df %>% filter(split == "Com Capela") %>%  pull(game_date) %>% max(),
+    y = def_df %>% filter(split == "Com Capela") %>% pull(opp_pts_paint) %>% mean(),
+    yend = def_df %>% filter(split == "Com Capela") %>% pull(opp_pts_paint) %>% mean() + .000001
+  ) +
+  geom_segment( linetype = 2, size = .1, color = "#F23827",
+    x = def_df %>% filter(split == "Sem Capela") %>% pull(game_date) %>% min(), xend = def_df %>% filter(split == "Sem Capela") %>%  pull(game_date) %>% max(),
+    y = def_df %>% filter(split == "Sem Capela") %>% pull(opp_pts_paint) %>% mean(),
+    yend = def_df %>% filter(split == "Sem Capela") %>% pull(opp_pts_paint) %>% mean() + .000001
+  ) +
+  geom_line() +
+  geom_point(data = def_df %>% 
+  filter(wl == "L") , show.legend = FALSE) +
+  labs(
+    title = "Defesa de garrafão do Rockets por jogo",
+    x = NULL, y = "Pontos no garrafão",
+    caption = "Fonte: stats.nba.com", subtitle = "Pontos são derrotas"
+  ) +
+  scale_color_manual(values = c("Sem Capela" = "#F23827", "Com Capela" = "#F5A8A0")) +
+  theme(
+    legend.position = c(.8,.2),
+    legend.background = element_blank(),
+    legend.title = element_blank()
+  )
+
+
+```
+Já nesse gráfico, vemos o comportamento dos pontos sofridos no garrafão. A mediana da era microball é apenas um ponto mais alta do que a da era anterior, o que na nossa opnião é um bom indicador que a defesa interna não sofreu uma piora relativa, afinal capela não ganhou seus 15 milhões de dolares por defender bem.
+
+
+```{r var_def}
+def_df %>% select(-opp_pts_paint) %>% 
+  pivot_longer(cols = contains("opp"), "variable", "value") %>% 
+  ggplot(aes(game_date, value, color = variable)) +
+  geom_line() +
+  scale_color_viridis_d() + theme(legend.position = "bottom")
+
+def_df %>% 
+  ggplot(aes(opp_pts_paint)) +
+  geom_density() +
+  facet_wrap(~split)
+
+
+def_df %>% select(-opp_pts_paint) %>% 
+  pivot_longer(cols = contains("opp"), "variable", "value") %>% 
+  ggplot(aes(value, fill = variable)) +
+  geom_histogram(bins = 9) +
+  facet_wrap(variable~split, nrow = 3, scales = "free_y")
+
+```
+Não pensei em tirar nada daqui.
 
 ### Estudo de caso West
 
