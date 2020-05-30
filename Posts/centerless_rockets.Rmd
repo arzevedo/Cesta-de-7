@@ -258,8 +258,33 @@ Não pensei em tirar nada daqui.
 
 Seria a melhor  versão de Westbrook que já vimos? Ou pelo menos o melhor esquema em que Westbrook já jogou? 
 
-```{r}
+```{r west shot}
+master_list <- list()
 
+for(i in c("2019-20", "2018-19", "2017-18", "2016-17", "2015-16", "2014-15", "2013-14")){
+  
+  link_shoot <- paste0("https://stats.nba.com/stats/playerdashptshots?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&PerMode=PerGame&Period=0&PlayerID=201566&Season=", 
+                       i,
+                       "&SeasonSegment=&SeasonType=Regular+Season&TeamID=0&VsConference=&VsDivision=")
+  
+  
+  shoot <- httr::GET(url = link_shoot,
+                     
+                     httr::add_headers(.headers = c('Accept'= 'application/json, text/plain, */*','Accept-Encoding'='gzip, deflate, br',
+                                                    'Accept-Language'='en-US,en;q=0.9','Connection'='keep-alive','Host'= 'stats.nba.com',
+                                                    'Referer'='https://stats.nba.com/','Sec-Fetch-Mode'='cors','Sec-Fetch-Site'= 'same-origin',
+                                                    'User-Agent'= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) 
+          Chrome/79.0.3945.130 Safari/537.36','x-nba-stats-origin'= 'stats','x-nba-stats-token'= 
+                                                      'true'))
+                     
+  )
+  
+  shot_json <- fromJSON(shoot %>% read_html() %>% html_text())
+  
+  master_list[[i]] <- map(shot_json$resultSets$rowSet, tidyr::as_tibble)
+  cat(i, "\n")
+  Sys.sleep(20)
+}
 ```
 
 
