@@ -1,0 +1,40 @@
+---
+title: "Continuidade dos elencos na NBA"
+author: "Cesta de 7"
+date: "07/07/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rvest)
+```
+
+```{r load data}
+conti <- read_html(
+  "https://www.basketball-reference.com/friv/continuity.html"
+) %>% 
+  html_nodes("table") %>% html_table() %>% 
+  as.data.frame() %>% as_tibble() %>% 
+  pivot_longer(cols = - Season, names_to = "team", values_to = "perc") %>% 
+  mutate(perc = str_replace(perc, "%", "") %>% as.numeric(),
+         perc = perc/100)
+```
+
+```{r}
+conti %>% 
+  ggplot(aes(x = Season, y = team, fill = perc)) +
+  geom_tile()
+
+conti %>% 
+  group_by(Season) %>% 
+  filter(dense_rank(perc) <= 3 | dense_rank(desc(perc)) <= 3) %>% 
+  ungroup() %>% mutate(top_bot = ifelse(perc > .5, "top", "bottom")) %>% 
+  group_by(Season, top_bot) %>% 
+  summarise(soma = mean(perc)) %>% 
+  
+  ggplot(aes(x = Season, y = soma, group = top_bot)) +
+  geom_line()
+```
+

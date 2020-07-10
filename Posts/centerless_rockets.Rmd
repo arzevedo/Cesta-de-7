@@ -173,6 +173,27 @@ lost_games %>%
     legend.background = element_blank(),
     legend.title = element_blank()
   )
+lost_games %>% 
+  ggplot(aes(x = date, y = diffe, color = split)) +
+  labs(
+    title = "Houston's defeats this season",
+    x = NULL, y = "Points difference",
+    caption = "Data: www.basketball-reference.com"
+  ) +
+  geom_line(linetype = 4,show.legend = FALSE) + geom_point() +
+  theme_light() +
+  ggrepel::geom_text_repel(
+    data = lost_games %>% filter(diffe < -25), show.legend = FALSE,
+    aes(label = Opponent), nudge_y = -2,nudge_x = -2, segment.color = "gray95"
+  ) +
+  guides(color = guide_legend(override.aes = list(size=5, linetype = 1))) +
+  scale_color_manual(values = c("Sem Capela" = "#F23827", "Com Capela" = "#F5A8A0"),
+                     labels = c("Without Capela", "With Capela")) +
+  theme(
+    legend.position = c(.3,.3),
+    legend.background = element_blank(),
+    legend.title = element_blank()
+  )
 ```
 Observando os jogos que o Time do Texas perdeu depois de abdicar de seu pivô, podemos ver a derrota grotesca para o suns por 36 pontos. Kelly Oubre e Devin Booker combinaram para 28 pontos no primeiro quarto. Para completar a bola de 3 não caiu (a não ser a de Harden 5-10). A defesa é sem dúvida a pior parte desse novo rockets. 
 Vamos explorar isso então.
@@ -231,8 +252,34 @@ def_df %>%
     legend.background = element_blank(),
     legend.title = element_blank()
   )
-
-
+def_df %>% 
+  ggplot(aes(game_date, opp_pts_paint, color = split, group = 1)) +
+  theme_light() +
+  geom_segment( linetype = 2, size = .2,
+    x = def_df %>% pull(game_date) %>% min(), xend = def_df %>% filter(split == "Com Capela") %>%  pull(game_date) %>% max(),
+    y = def_df %>% filter(split == "Com Capela") %>% pull(opp_pts_paint) %>% mean(),
+    yend = def_df %>% filter(split == "Com Capela") %>% pull(opp_pts_paint) %>% mean() + .000001
+  ) +
+  geom_segment( linetype = 2, size = .1, color = "#F23827",
+    x = def_df %>% filter(split == "Sem Capela") %>% pull(game_date) %>% min(), xend = def_df %>% filter(split == "Sem Capela") %>%  pull(game_date) %>% max(),
+    y = def_df %>% filter(split == "Sem Capela") %>% pull(opp_pts_paint) %>% mean(),
+    yend = def_df %>% filter(split == "Sem Capela") %>% pull(opp_pts_paint) %>% mean() + .000001
+  ) +
+  geom_line() +
+  geom_point(data = def_df %>% 
+  filter(wl == "L") , show.legend = FALSE) +
+  labs(
+    title = "Rockets paint deffense per game",
+    x = NULL, y = "Points in the paint",
+    caption = "Data: stats.nba.com", subtitle = "Points are defeats"
+  ) +
+  scale_color_manual(values = c("Sem Capela" = "#F23827", "Com Capela" = "#F5A8A0"),
+                     labels = c("Without Capela", "With Capela")) +
+  theme(
+    legend.position = c(.8,.2),
+    legend.background = element_blank(),
+    legend.title = element_blank()
+  )
 ```
 Já nesse gráfico, vemos o comportamento dos pontos sofridos no garrafão. A mediana da era microball é apenas um ponto mais alta do que a da era anterior, o que na nossa opnião é um bom indicador que a defesa interna não sofreu uma piora relativa, afinal capela não ganhou seus 15 milhões de dolares por defender bem.
 
@@ -352,14 +399,14 @@ plot_labels <- c("Catch and Shoot"="Catch\nand\nShoot", "Pull Ups"="Pull Ups", "
 
 ```{r russ plot}
 
-russ_tidy %>%   
+russ_plot_1 <- russ_tidy %>%   
   ggplot(aes(x = shot_type, y = fga_frequency, 
              color = fga_frequency >= 0, fill = fga_frequency >= 0)) +
   geom_hline(yintercept = 0, linetype = 3, size = .5, color = "gray65")+
   geom_col(width = .01, show.legend = FALSE) +
   scale_y_continuous(labels = scales::percent) +
   geom_point(size = 3, show.legend = FALSE) +
-  labs(x = NULL, y = "Frequencia de arremessos",
+  labs(x = NULL, y = "Frequência de arremessos",
        caption = "Fonte: stats.nba.com",
        title = "Mudança nos arremessos de Westbrook no Rockets",
        subtitle = "Antes - Depois do Micro ball") +
@@ -373,7 +420,7 @@ russ_tidy %>%
   scale_color_manual(values = c("TRUE" = "black", "FALSE" = "#F23827")) +
   theme(axis.text.x = element_text(angle = 0, size = 8, vjust = .75))
 
-russ_tidy %>%   
+russ_plot_2 <- russ_tidy %>%   
   ggplot(aes(x = shot_type, y = efg_pct, 
              color = efg_pct >= 0, fill = efg_pct >= 0)) +
   geom_col(width = .01, show.legend = FALSE) +
@@ -391,8 +438,11 @@ russ_tidy %>%
   )+
   scale_color_manual(values = c("TRUE" = "black", "FALSE" = "#F23827")) +
   theme(axis.text.x = element_text(angle = 0, size = 8, vjust = .75))
+
+russ_plot_1 
+russ_plot_2
 ```
-A historia desse gráfico é bem interresante! Os pirulitos pretos mostram o quanto mais West faz aquele tipo de arremesso depois que Capela foi pra Atlanta. Observe que Todos os tipos de arremessos em *arremesso geral* diminuiram e Westbrook está realmente focando o seu jogo em arremessos dentro do garrafão. Em *Dibles para arremesso* vemos que o ex-thunder está driblando mais a bola antes de arremessar focando em suas forças disruptivas.   
+A historia desse gráfico é bem interresante! Os pirulitos pretos mostram o quanto mais West faz aquele tipo de arremesso depois que Capela foi pra Atlanta. Observe que todos os tipos de arremessos em *arremesso geral* diminuiram e Westbrook está realmente focando o seu jogo em arremessos dentro do garrafão. Em *Dibles para arremesso* vemos que o ex-thunder está driblando mais a bola antes de arremessar focando em suas forças disruptivas.   
 
 Em quanto na visualização da frequencia vemos algumas mudanças de comportamento. Nessa temos a __Effective field goal percentage__ (EFG%), que mostra a eficiencia [penalizada][https://en.wikipedia.org/wiki/Effective_field_goal_percentage] dos arremessos de broodie. Vemos uma melhora geral na eficiencia em varios aspectos, chamando a atenção para os __catch and shoot__ já que tem arremessado bem menos e portanto seleciona melhor os chutes e a mudança com relação a marcação, já que agora tem mais espaço para ser o __ball hog__ que ele adora ser.
 
