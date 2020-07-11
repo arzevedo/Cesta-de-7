@@ -446,6 +446,111 @@ A historia desse gráfico é bem interresante! Os pirulitos pretos mostram o qua
 
 Em quanto na visualização da frequencia vemos algumas mudanças de comportamento. Nessa temos a __Effective field goal percentage__ (EFG%), que mostra a eficiencia [penalizada][https://en.wikipedia.org/wiki/Effective_field_goal_percentage] dos arremessos de broodie. Vemos uma melhora geral na eficiencia em varios aspectos, chamando a atenção para os __catch and shoot__ já que tem arremessado bem menos e portanto seleciona melhor os chutes e a mudança com relação a marcação, já que agora tem mais espaço para ser o __ball hog__ que ele adora ser.
 
+### Estilo de shot
+
+```{r data hou shot}
+link_B4 <- "https://stats.nba.com/stats/teamdashboardbyshootingsplits?DateFrom=&DateTo=01%2F30%2F2020&GameSegment=&LastNGames=0&LeagueID=00&Location=&MeasureType=Base&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PaceAdjust=N&PerMode=Totals&Period=0&PlusMinus=N&Rank=N&Season=2019-20&SeasonSegment=&SeasonType=Regular+Season&ShotClockRange=&TeamID=1610612745&VsConference=&VsDivision="
+link_Af <- "https://stats.nba.com/stats/teamdashboardbyshootingsplits?DateFrom=01%2F30%2F2020&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&MeasureType=Base&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PaceAdjust=N&PerMode=Totals&Period=0&PlusMinus=N&Rank=N&Season=2019-20&SeasonSegment=&SeasonType=Regular+Season&ShotClockRange=&TeamID=1610612745&VsConference=&VsDivision="
+
+nba_scrap_2 <- function(link){
+  httr_link <- httr::GET(url = link,
+                         
+                         httr::add_headers(.headers = c('Accept'= 'application/json, text/plain, */*','Accept-Encoding'='gzip, deflate, br',
+                                                        'Accept-Language'='en-US,en;q=0.9','Connection'='keep-alive','Host'= 'stats.nba.com',
+                                                        'Referer'='https://stats.nba.com/','Sec-Fetch-Mode'='cors','Sec-Fetch-Site'= 'same-origin',
+                                                        'User-Agent'= 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) 
+          Chrome/79.0.3945.130 Safari/537.36','x-nba-stats-origin'= 'stats','x-nba-stats-token'= 
+                                                          'true'))
+                         
+  )
+  
+  json_table <- fromJSON(httr_link %>% read_html() %>% html_text())
+  
+  final_df <- json_table$resultSets$rowSet %>% map(tidyr::as_tibble) %>% 
+    map_dfr(bind_rows)
+  
+  colnames(final_df) <- json_table$resultSets$headers[[1]]
+  
+  final_df <- final_df %>% 
+    janitor::clean_names() %>% 
+    filter(group_set != "Overall")
+  
+  return(final_df)
+  
+}
+
+hou_shot <- nba_scrap_2(link_B4) %>% 
+  mutate(time = "B4") %>% 
+  bind_rows(
+    nba_scrap_2(link_Af) %>% 
+      mutate(time = "Af")
+  )
+write_csv(hou_shot, "Posts/hou_shot.csv")
+```
+Pensar em filtrar os tipos de shot, alguns são bem raros
+```{r}
+hou_shot %>% 
+  filter(group_set == "Shot Type") %>% 
+  mutate(group_value = fct_reorder(
+    group_value, fga
+  )) %>% 
+  group_by(time) %>% 
+  top_n(fga,n = 10) %>% 
+  ggplot(aes(fga, group_value)) +
+  geom_point() +
+  facet_wrap(~time, scales = "free")
+```
+
+
+```{r eval hou shot}
+hou_shot_diff <- hou_shot %>% 
+  mutate(
+    fgm = as.numeric(fgm),
+    fga_g = case_when(
+      time == "B4" ~ fga/47,
+      TRUE         ~ fga/17
+    ),
+    fgm_g = case_when(
+      time == "B4" ~ fgm/47,
+      TRUE         ~ fgm/17
+    )
+  ) %>%
+  filter(group_set == "Shot Type") %>% select(- 1, - cfparams, - na) %>%
+  group_by(time) %>% 
+  mutate(group = row_number()) %>% ungroup() %>% 
+  pivot_longer(cols = c(fgm:cfid, fga_g, fgm_g), 
+               names_to = "var", values_to = "val") %>% 
+  mutate(val = ifelse(is.na(val), 0, val)) %>% 
+  mutate(val = as.numeric(val)) %>%  
+  group_by(group_value, group, var) %>%
+  filter(n() > 1) %>%
+  mutate(
+    diff = val - lag(val)
+  ) %>% drop_na() %>% 
+  select(- time, - val) %>% 
+  pivot_wider(names_from = var, values_from = diff) %>% 
+  ungroup() %>% 
+  select(!contains("rank"))
+View(hou_shot_diff)
+```
+
+```{r plots hou shot}
+common_shots <- hou_shot %>% 
+  filter(group_set == "Shot Type") %>% 
+  group_by(time) %>% 
+  top_n(fga,n = 10) %>% 
+  pull(group_value)
+
+hou_shot_diff %>% 
+  filter(group_value %in% common_shots) %>% 
+  ggplot(aes(y = group_value, x = fg_pct, color = fg_pct > 0, shape = fga_g > 0)) + 
+  geom_vline(xintercept = 0, color = "gray70") +
+  geom_point(size = 3) +
+  labs(y = NULL)
+```
+
+
+
 # Links
 
 Com capela

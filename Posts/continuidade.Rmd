@@ -20,6 +20,13 @@ conti <- read_html(
   pivot_longer(cols = - Season, names_to = "team", values_to = "perc") %>% 
   mutate(perc = str_replace(perc, "%", "") %>% as.numeric(),
          perc = perc/100)
+for(i in ){
+read_html(paste0("https://www.basketball-reference.com/leagues/NBA_", i,".html")) %>% 
+  html_nodes("table") %>% .[1:2] %>% html_table() %>% 
+  map(~select(., team = contains("Confe"), W, L)) %>% 
+  map_dfr(bind_rows)
+  }
+  
 ```
 
 ```{r}
