@@ -19,14 +19,67 @@ conti <- read_html(
   as.data.frame() %>% as_tibble() %>% 
   pivot_longer(cols = - Season, names_to = "team", values_to = "perc") %>% 
   mutate(perc = str_replace(perc, "%", "") %>% as.numeric(),
-         perc = perc/100)
-for(i in ){
-read_html(paste0("https://www.basketball-reference.com/leagues/NBA_", i,".html")) %>% 
-  html_nodes("table") %>% .[1:2] %>% html_table() %>% 
-  map(~select(., team = contains("Confe"), W, L)) %>% 
-  map_dfr(bind_rows)
-  }
+         perc = perc/100,
+         Season = str_replace_all(Season, "-..", "")) %>% 
+  mutate(
+    team = 
+      case_when(
+        team == "ATL" ~ "Atlanta Hawks", team == "BOS" ~ "Boston Celtics",
+        team == "CHA" ~ "Charlotte Hornets", team == "CHI" ~ "Chicago Bulls",
+        team == "CLE" ~ "Cleveland Cavaliers", team == "DAL" ~ "Dallas Mavericks",
+        team == "DEN" ~ "Denver Nuggets", team == "DET" ~ "Detroit Pistons",
+        team == "GSW" ~ "Golden State Warriors", team == "HOU" ~ "Houston Rockets",
+        team == "IND" ~ "Indiana Pacers", team == "LAC" ~ "Los Angeles Clippers",
+        team == "LAL" ~ "Los Angeles Lakers", team == "MEM" ~ "Memphis Grizzlies",
+        team == "MIA" ~ "Miami Heat", team == "MIL" ~ "Milwaukee Bucks",
+        team == "MIN" ~ "Minnesota Timberwolves", team == "NJN" ~ "New Jersey Nets",
+        team == "NOH" ~ "New Orleans Hornets", team == "NYK" ~ "New York Knicks",
+        team == "OKC" ~ "Oklahoma City Thunder", team == "ORL" ~ "Orlando Magic",
+        team == "PHI" ~ "Philadelphia 76ers", team == "PHO" ~ "Phoenix Suns",
+        team == "POR" ~ "Portland Trail Blazers", team == "SAC" ~ "Sacramento Kings",
+        team == "SAS" ~ "San Antonio Spurs", team == "TOR" ~ "Toronto Raptors",
+        team == "UTA" ~ "Utah Jazz",
+        TRUE ~ "Washington Wizards"
+      )
+  )
+
+years_avb <- 1987:2019
+cont_list <- list()
+
+for(i in years_avb){
+  df <- read_html(
+    paste0(
+      "https://www.basketball-reference.com/friv/standings.fcgi?month=6&day=11&year=", 
+      i,"&lg_id=NBA"
+    )
+  ) %>% 
+    html_nodes("table") %>% html_table() %>% 
+    map(~select(., team = contains("Confe"), W, L)) %>% 
+    map_dfr(bind_rows) %>% mutate(year = i)
   
+  cont_list[[i - 1986]] <- df
+  Sys.sleep(5)
+}
+
+perf_df <- cont_list %>% 
+  map_dfr(bind_rows) %>% filter(!is.na(W)) %>% 
+  mutate(
+    pl = case_when(
+      str_detect(team, "[:punct:]") ~ "PL",
+      TRUE                  ~ "Nope"
+    )
+  ) %>% 
+  mutate(
+    team = str_remove(team, "[:punct:]"),
+    year = as.character(year)
+  )
+
+conti %>% 
+  left_join(
+    perf_df,
+    by = c("team" = "team", "Season" = "year")
+  )
+
 ```
 
 ```{r}
