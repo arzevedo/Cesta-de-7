@@ -66,15 +66,24 @@ perf_df <- cont_list %>%
   mutate(
     pl = case_when(
       str_detect(team, "[:punct:]") ~ "PL",
-      TRUE                  ~ "Nope"
+      TRUE                          ~ "Nope"
     )
   ) %>% 
   mutate(
     team = str_remove(team, "[:punct:]"),
     year = as.character(year)
+  ) %>% 
+  mutate(
+    team = case_when(
+      team %in% c("Charlotte Bobcats", "New OrleansOklahoma City Hornets") ~ "Charlotte Hornets", 
+      team == "New Orleans Pelicans" ~  "New Orleans Hornets", 
+      team == "Washington Bullets" ~ "Washington Wizards",
+      team == "Vancouver Grizzlies" ~ "Memphis Grizzlies",
+      TRUE ~ team
+    )
   )
 
-conti %>% 
+final_df <- conti %>% 
   left_join(
     perf_df,
     by = c("team" = "team", "Season" = "year")
@@ -82,10 +91,10 @@ conti %>%
 
 ```
 
-```{r}
+```{r explore}
 conti %>% 
   ggplot(aes(x = Season, y = team, fill = perc)) +
-  geom_tile()
+  geom_tile() 
 
 conti %>% 
   group_by(Season) %>% 
@@ -96,5 +105,9 @@ conti %>%
   
   ggplot(aes(x = Season, y = soma, group = top_bot)) +
   geom_line()
+
+final_df %>% drop_na() %>% 
+  ggplot(aes(x = Season, y = W/L)) +
+  geom_point()
 ```
 
