@@ -82,7 +82,11 @@ perf_df <- cont_list %>%
       TRUE ~ team
     )
   )
-
+read_html("https://www.basketball-reference.com/leagues/") %>% 
+  html_node("table") %>% html_table() %>% as.data.frame() %>%
+  .[,c(1,3)] %>% select("year" = "", "champ" = ".1") %>% 
+  mutate(year = str_replace_all(year, "-..", ""))
+  
 final_df <- conti %>% 
   left_join(
     perf_df,
@@ -107,7 +111,7 @@ conti %>%
   geom_line()
 
 final_df %>% drop_na() %>% 
-  ggplot(aes(x = Season, y = W/L)) +
+  ggplot(aes(x = Season, y = W/L + perc)) +
   geom_point()
 ```
 
