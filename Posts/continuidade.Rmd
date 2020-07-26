@@ -9,6 +9,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(rvest)
+library(emojifont)
+library(ggthemes)
 ```
 
 ```{r load data}
@@ -20,7 +22,8 @@ conti <- read_html(
   pivot_longer(cols = - Season, names_to = "team", values_to = "perc") %>% 
   mutate(perc = str_replace(perc, "%", "") %>% as.numeric(),
          perc = perc/100,
-         Season = str_replace_all(Season, "-..", "")) %>% 
+         Season = str_replace_all(Season, "..-", "")) %>%
+  mutate(Season = ifelse(Season == "1900", "2000", Season)) %>% 
   mutate(
     team = 
       case_when(
@@ -71,28 +74,35 @@ perf_df <- cont_list %>%
   ) %>% 
   mutate(
     team = str_remove(team, "[:punct:]"),
-    year = as.character(year)
+    year = as.character(year + 1)
   ) %>% 
   mutate(
     team = case_when(
       team %in% c("Charlotte Bobcats", "New OrleansOklahoma City Hornets") ~ "Charlotte Hornets", 
+      team == "Brooklyn Nets"         ~ "New Jersey Nets",
       team == "New Orleans Pelicans" ~  "New Orleans Hornets", 
       team == "Washington Bullets" ~ "Washington Wizards",
       team == "Vancouver Grizzlies" ~ "Memphis Grizzlies",
       TRUE ~ team
     )
   )
-read_html("https://www.basketball-reference.com/leagues/") %>% 
+
+champ <- read_html("https://www.basketball-reference.com/leagues/") %>% 
   html_node("table") %>% html_table() %>% as.data.frame() %>%
-  .[,c(1,3)] %>% select("year" = "", "champ" = ".1") %>% 
-  mutate(year = str_replace_all(year, "-..", ""))
-  
+  .[-c(1:2),c(1,3)] %>% select("year" = "", "champ" = ".1") %>% 
+  mutate(year = str_replace_all(year, "..-", "")) %>% 
+  mutate(year = ifelse(year == "1900", "2000", year))
+
 final_df <- conti %>% 
   left_join(
     perf_df,
     by = c("team" = "team", "Season" = "year")
-  )
-
+  ) %>% 
+  right_join(
+    champ,
+    by = c("Season" = "year")
+  ) %>% 
+  mutate(champ = ifelse(champ == team, "Champ", "Nope"))
 ```
 
 ```{r explore}
@@ -111,7 +121,76 @@ conti %>%
   geom_line()
 
 final_df %>% drop_na() %>% 
-  ggplot(aes(x = Season, y = W/L + perc)) +
-  geom_point()
+  ggplot(aes(x = Season, y = perc, group = team, color = champ)) +
+  geom_line(show.legend = FALSE) +
+  scale_color_manual(values = c("Champ" = "black", "Nope" = "gray80"))
+final_df %>%
+  group_by(Season) %>% mutate(media = mean(perc)) %>% 
+  ungroup() %>% 
+  mutate(Season = as.numeric(Season)) %>%
+  filter(champ == "Champ", Season >= 2000) %>% 
+  ggplot(aes(x = Season, y = perc)) +
+  geom_line(aes(x = Season, y = media), color = "gray70") +
+  geom_point() +
+  ggrepel::geom_text_repel(aes(label = team))
+
 ```
+
+```{r}
+final_df %>% 
+  group_by(Season) %>% 
+  mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  filter(team == "Los Angeles Lakers") %>% 
+  ggplot(aes(as.numeric(Season), perc, group = team)) +
+  #geom_line() +
+  geom_segment(aes(yend = mediana, xend = as.numeric(Season)),
+               color = "gray70", linetype = 2) +
+  geom_point(aes(y = mediana), color = "gray70", shape = 4, size = 3) +
+  geom_point(aes(color = champ), size = 3,
+             show.legend = FALSE) +
+  geom_segment(aes(yend = mediana, xend = as.numeric(Season)),
+               color = "gray70", linetype = 2) +
+  labs(x = NULL, y = NULL) +
+  ylim(c(0,1))
+
+final_df %>% 
+  group_by(Season) %>% 
+  mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  filter(team == "Chicago Bulls") %>% 
+  ggplot(aes(as.numeric(Season), perc, group = team)) +
+  geom_hline(yintercept = 0, linetype = 1, color = "gray80") +
+  geom_line() + 
+  xlim(c(1967, 2020)) +
+  geom_text(data = final_df %>% 
+               group_by(Season) %>% 
+               mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+               ungroup() %>%
+               filter(champ == "Champ", team == "Chicago Bulls"),
+            label="★", size=7, family = "HiraKakuPro-W3", color = "firebrick4") +
+  geom_text(data = final_df %>% 
+               group_by(Season) %>% 
+               mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+               ungroup() %>%
+               filter(team == "Chicago Bulls", Season == 1985),
+            label="🐐", size=7, family = "EmojiOne",
+            aes(y = perc+.07, x = as.numeric(Season) - .7)) +
+  scale_y_continuous(labels=scales::percent) +
+  labs(title = "Que time é esse?", x = NULL, subtitle = "% de jogadores que estiveram no time na temporada anterior",
+       y = NULL) +
+  ggthemes::theme_fivethirtyeight() +
+  theme(plot.subtitle = element_text())
+
+```
+
+```{r}
+final_df %>% 
+  filter(Season >=1988) %>% 
+  ggplot(aes(x = perc, y = W)) +
+  geom_point() +
+  #facet_wrap(~Season) +
+  geom_smooth(method = "lm", se = 0)
+```
+
 
