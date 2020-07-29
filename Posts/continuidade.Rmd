@@ -164,16 +164,16 @@ final_df %>%
   geom_line() + 
   xlim(c(1967, 2020)) +
   geom_text(data = final_df %>% 
-               group_by(Season) %>% 
-               mutate(mediana = median(perc, na.rm = TRUE)) %>% 
-               ungroup() %>%
-               filter(champ == "Champ", team == "Chicago Bulls"),
+              group_by(Season) %>% 
+              mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+              ungroup() %>%
+              filter(champ == "Champ", team == "Chicago Bulls"),
             label="★", size=7, family = "HiraKakuPro-W3", color = "firebrick4") +
   geom_text(data = final_df %>% 
-               group_by(Season) %>% 
-               mutate(mediana = median(perc, na.rm = TRUE)) %>% 
-               ungroup() %>%
-               filter(team == "Chicago Bulls", Season == 1985),
+              group_by(Season) %>% 
+              mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+              ungroup() %>%
+              filter(team == "Chicago Bulls", Season == 1985),
             label="🐐", size=7, family = "EmojiOne",
             aes(y = perc+.07, x = as.numeric(Season) - .7)) +
   scale_y_continuous(labels=scales::percent) +
@@ -194,3 +194,100 @@ final_df %>%
 ```
 
 
+```{r}
+final_df %>% 
+  group_by(Season) %>% 
+  mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  filter(team == "Detroit Pistons") %>% 
+  ggplot(aes(as.numeric(Season), perc, group = team)) +
+  geom_hline(yintercept = 0, linetype = 1, color = "gray80") +
+  geom_line() + 
+  xlim(c(1967, 2020)) +
+  geom_text(data = final_df %>% 
+              group_by(Season) %>% 
+              mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+              ungroup() %>%
+              filter(champ == "Champ", team == "Detroit Pistons"),
+            label="★", size=7,color = "darkblue") +
+  scale_y_continuous(labels=scales::percent) +
+  labs(title = "Que time é esse?", x = NULL, subtitle = "% de jogadores que estiveram no time na temporada anterior",
+       y = NULL) +
+  ggthemes::theme_fivethirtyeight() +
+  theme(plot.subtitle = element_text())
+
+final_df %>% 
+  group_by(Season) %>% 
+  mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  filter(team == "San Antonio Spurs") %>% 
+  ggplot(aes(as.numeric(Season), perc, group = team)) +
+  geom_hline(yintercept = 0, linetype = 1, color = "gray80") +
+  geom_line() + 
+  xlim(c(1967, 2020)) +
+  geom_text(data = final_df %>% 
+              group_by(Season) %>% 
+              mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+              ungroup() %>%
+              filter(champ == "Champ", team == "San Antonio Spurs"),
+            label="★", size=7, color = "black") +
+  scale_y_continuous(labels=scales::percent) +
+  labs(title = "Que time é esse?", x = NULL, subtitle = "% de jogadores que estiveram no time na temporada anterior",
+       y = NULL) +
+  ggthemes::theme_fivethirtyeight() +
+  theme(plot.subtitle = element_text())
+
+final_df %>% 
+  group_by(Season) %>% 
+  mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  filter(team == "Los Angeles Lakers") %>% 
+  ggplot(aes(as.numeric(Season), perc, group = team)) +
+  geom_hline(yintercept = 0, linetype = 1, color = "gray80") +
+  geom_line() + 
+  xlim(c(1947, 2020)) +
+  geom_text(data = final_df %>% 
+              group_by(Season) %>% 
+              mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+              ungroup() %>%
+              filter(champ == "Champ", team == "Los Angeles Lakers"),
+            label="★", size=7, color = "#552583") +
+  scale_y_continuous(labels=scales::percent) +
+  labs(title = "Que time é esse?", x = NULL, subtitle = "% de jogadores que estiveram no time na temporada anterior",
+       y = NULL) +
+  ggthemes::theme_fivethirtyeight() +
+  theme(plot.subtitle = element_text())
+```
+
+```{r}
+int_plot <- final_df %>% 
+  group_by(Season) %>% 
+  mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  ggplot(aes(perc, W, color = mediana > perc, label = paste(team, Season))) +
+  geom_point()
+plotly::ggplotly(int_plot)
+
+sal_cap <- read_html("https://widgets.sports-reference.com/wg.fcgi?css=1&site=bbr&url=%2Fcontracts%2Fsalary-cap-history.html&div=div_salary_cap_history") %>% 
+  html_nodes("table") %>% html_table() %>% 
+  as.data.frame() %>% 
+  transmute(Season = Year %>% 
+              str_replace_all("..-", ""),
+            cap = Salary.Cap %>% 
+              str_replace("\\$", "") %>% 
+              str_replace_all("\\,", "") %>% 
+              as.numeric()
+  )
+
+final_df %>% 
+  group_by(Season) %>% 
+  mutate(mediana = median(perc, na.rm = TRUE)) %>% 
+  ungroup() %>%
+  left_join(sal_cap) %>% 
+  
+  ggplot(aes(as.numeric(Season), mediana)) +
+  #geom_line() +
+  geom_tile(aes(fill = cap))
+```
+
+/
